@@ -113,6 +113,7 @@ def convert_values(value, document=doc):
                     .DisplayUnits)
 
     ui_values = DB.UnitUtils.ConvertFromInternalUnits(value, ui_units)
+    ui_values = round(ui_values, 3)
     return ui_values
 
 
@@ -139,6 +140,7 @@ def calculate_distance(point1, point2):
     # Calculate the distance using the Euclidean distance formula
     distance =( #rounded to the nearest inch
         math.sqrt((x2 - x1)**2 + (y2 - y1)**2 + (z2 - z1)**2))
+    # convert to UI units
     return distance
 
 
