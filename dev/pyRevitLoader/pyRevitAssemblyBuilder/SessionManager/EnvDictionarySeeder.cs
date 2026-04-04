@@ -146,31 +146,42 @@ namespace pyRevitAssemblyBuilder.SessionManager
 
         internal static string ReadIPYVersion(string pyRevitRoot)
         {
-            // IronPython engines live under bin/ inside the repo root as well as beside this DLL.
-            // Check both the bin/ folder of the repo and the directory of the executing assembly.
+            // IronPython engines live under bin/{netcore|netfx}/engines/{IPY342|IPY2712PR}/.
+            // IPY342 ships as "IronPython.dll"; IPY2712PR ships as "pyRevitLabs.IronPython.dll".
+            // Check the repo engine directories first, then fall back to the directory of
+            // the executing assembly (which is deployed alongside the engine DLLs).
             var candidateDirs = new List<string>();
 
             if (!string.IsNullOrEmpty(pyRevitRoot))
             {
-                candidateDirs.Add(Path.Combine(pyRevitRoot, "bin", "IPY342"));
-                candidateDirs.Add(Path.Combine(pyRevitRoot, "bin", "IPY2712PR"));
-                candidateDirs.Add(Path.Combine(pyRevitRoot, "bin"));
+                // Correct layout: bin/{netcore|netfx}/engines/{version}/
+                foreach (var net in new[] { "netcore", "netfx" })
+                {
+                    candidateDirs.Add(Path.Combine(pyRevitRoot, "bin", net, "engines", "IPY342"));
+                    candidateDirs.Add(Path.Combine(pyRevitRoot, "bin", net, "engines", "IPY2712PR"));
+                }
             }
 
             var selfDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
             if (!string.IsNullOrEmpty(selfDir))
                 candidateDirs.Add(selfDir);
 
+            // Check both DLL name variants in each candidate directory
+            var dllNames = new[] { "IronPython.dll", "pyRevitLabs.IronPython.dll" };
+
             foreach (var dir in candidateDirs)
             {
-                var dll = Path.Combine(dir, "IronPython.dll");
-                if (!File.Exists(dll)) continue;
-                try
+                foreach (var dllName in dllNames)
                 {
-                    var ver = AssemblyName.GetAssemblyName(dll).Version;
-                    if (ver != null) return ver.ToString();
+                    var dll = Path.Combine(dir, dllName);
+                    if (!File.Exists(dll)) continue;
+                    try
+                    {
+                        var ver = AssemblyName.GetAssemblyName(dll).Version;
+                        if (ver != null) return ver.ToString();
+                    }
+                    catch { /* try next candidate */ }
                 }
-                catch { /* try next candidate */ }
             }
 
             return "Unknown";
